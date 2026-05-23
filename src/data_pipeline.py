@@ -1,10 +1,10 @@
 import pandas as pd
 import numpy as np
 
-from sklearn.model_selection import train_test_split
+
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import OneHotEncoder, FunctionTransformer, OrdinalEncoder
+from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 from sklearn.impute import SimpleImputer
 from sklearn.base import BaseEstimator, TransformerMixin
 from category_encoders import OrdinalEncoder as ce_encoder
@@ -59,12 +59,14 @@ def get_preprocessor():
     """"""
 
     numeric_pipeline = Pipeline(steps=[
-        ('imputer', SimpleImputer(strategy='median'))
+        ('imputer', SimpleImputer(strategy='median')),
+        ('scaler', StandardScaler())
     ])
 
     winsorize_pipeline = Pipeline(steps=[
         ('imputer', SimpleImputer(strategy='median')),
         ('winsorizer', WinsorizerTransformer(limits=(0.001, 0.001))),
+        ('scaler', StandardScaler())
     ])
 
     ohe_pipeline = Pipeline(steps=[
@@ -79,7 +81,8 @@ def get_preprocessor():
 
     month_pipeline = Pipeline(steps=[
         ('encoder', OrdinalEncoder(categories=[MONTH_CATS], handle_unknown='use_encoded_value', unknown_value=np.nan)),
-        ('imputer', SimpleImputer(strategy='most_frequent'))
+        ('imputer', SimpleImputer(strategy='most_frequent')),
+        ('scaler', StandardScaler())
     ])
 
     num_no_winsorize = [col for col in NUMERIC_COLS if col not in WINSORIZE_COLS]
