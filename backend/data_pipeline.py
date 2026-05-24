@@ -1,14 +1,12 @@
 import pandas as pd
 import numpy as np
 
-
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 from sklearn.impute import SimpleImputer
 from sklearn.base import BaseEstimator, TransformerMixin
 from category_encoders import OrdinalEncoder as ce_encoder
-
 
 NUMERIC_COLS = [
     'age', 'campaign', 'previous', 'cons.price.idx',

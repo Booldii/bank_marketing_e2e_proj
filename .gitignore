@@ -6,3 +6,7 @@ __pycache__/
 .uv/
 
 .idea/
+
+data/
+*.db
+*.sqlite3

@@ -1,0 +1,8 @@
+[project]
+name = "bank-marketing-e2e-proj"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.14"
+dependencies = [
+    "notebook>=7.5.6",
+]
