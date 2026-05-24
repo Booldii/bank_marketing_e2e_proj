@@ -36,6 +36,9 @@ class WinsorizerTransformer(BaseEstimator, TransformerMixin):
             X_copy[:, i] = np.clip(X_copy[:, i],self.lower_bounds_[i], self.upper_bounds_[i])
         return X_copy
 
+    def get_feature_names_out(self, input_features=None):
+        return input_features
+
 
 EDU_MAPPING= {
         'illiterate': 0,

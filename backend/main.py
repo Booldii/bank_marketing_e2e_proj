@@ -5,6 +5,7 @@ import joblib
 import pandas as pd
 import os
 import sys
+import shap
 
 from macro_scraper import EurostatScraper
 from data_pipeline import WinsorizerTransformer
@@ -18,12 +19,22 @@ scraper = EurostatScraper()
 
 MODEL_PATH = "../models/RF_model_v1.joblib"
 
+model_pipeline = None
+preprocessor = None
+model = None
+explainer = None
+
 try:
-    model_pipeline = joblib.load(MODEL_PATH)
-    print("Model loaded")
+    if os.path.exists(MODEL_PATH):
+        model_pipeline = joblib.load(MODEL_PATH)
+        preprocessor = model_pipeline.named_steps['preprocessor']
+        model = model_pipeline.named_steps['model']
+        explainer = shap.TreeExplainer(model)
+        print("Model and SHAP Explainder loaded")
+    else:
+        print(f"Model hasn't been loaded from {MODEL_PATH}")
 except Exception as e:
     print(f"Error during model loading. Details: {e}")
-    model_pipeline = None
 
 class PredictRequest(BaseModel):
     age: int
@@ -68,12 +79,43 @@ def predict_conversion(request: PredictRequest):
 
     try:
         probability = model_pipeline.predict_proba(X_new)[0, 1]
+        X_transformed = preprocessor.transform(X_new)
+
+        feature_names = preprocessor.get_feature_names_out()
+        shap_values = explainer.shap_values(X_transformed)
+
+        if isinstance(shap_values, list):
+            row_shap = shap_values[1][0]
+        elif len(shap_values.shape) == 3:
+            row_shap = shap_values[0, :, 1]
+        else:
+            row_shap = shap_values[0]
+
+        raw_shap_dict = dict(zip(feature_names, row_shap))
+
+        positive_impact = []
+        negative_impact = []
+
+        for feat_name, shap_val in raw_shap_dict.items():
+            clean_name = feat_name.split('__')[-1]
+            rounded_val = round(float(shap_val), 4)
+
+            if rounded_val > 0.0001:
+                positive_impact.append({"feature": clean_name, "impact": rounded_val})
+            elif rounded_val < -0.0001:
+                negative_impact.append({"feature": clean_name, "impact": rounded_val})
+
+        positive_impact = sorted(positive_impact, key=lambda x: x['impact'], reverse=True)[:3]
+        negative_impact = sorted(negative_impact, key=lambda x: x['impact'])[:3]
 
         return {
             "success": True,
             "probability": float(probability),
             "macro_used": macro_data,
-            "shap_explanation": "Funkcja w przygotowaniu..."
+            "shap_explanation": {
+                "positive": positive_impact,
+                "negative": negative_impact
+            }
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Prediction error: {e}")
@@ -100,6 +142,7 @@ def update_client_status(feedback: FeedbackRequest):
             raise HTTPException(status_code=404, detail=f"Database error: {feedback.result}")
         conn.close()
 
+        return {"success": True, "message": f"Zapisano status '{feedback.result}' dla klienta {feedback.client_id}."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
 

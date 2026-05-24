@@ -83,10 +83,3 @@ class EurostatScraper:
             'cons.price.idx': cpi_val,
             'cons.conf.idx': cci_val
         }
-
-
-if __name__ == "__main__":
-    scraper = EurostatScraper()
-    macro_data = scraper.get_all_macro(2011, 'may')
-    print("\nKomplet danych pobranych z Eurostatu:")
-    print(macro_data)
