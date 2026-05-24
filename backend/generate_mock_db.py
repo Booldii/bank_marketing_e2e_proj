@@ -23,13 +23,15 @@ def generate_mock_clients(n_clients=100):
         'housing': np.random.choice(yes_no, n_clients, p=[0.45, 0.55]),
         'loan': np.random.choice(yes_no, n_clients, p=[0.8, 0.2]),
         'contact': np.random.choice(contact_types, n_clients, p=[0.8, 0.2]),
-        'campaign': np.random.randint(1, 5, n_clients),
+        'campaign': np.random.randint(0, 4, n_clients),
         'previous': np.random.choice([0, 1, 2, 3], n_clients, p=[0.8, 0.1, 0.05, 0.05]),
         'poutcome': np.random.choice(poutcome, n_clients, p=[0.1, 0.8, 0.1]),
 
         'contact_status': ['to_call'] * n_clients
     }
     df = pd.DataFrame(data)
+    df["poutcome"] = np.where(df["previous"] == 0, "nonexistent", df["poutcome"])
+    df["previous"] = np.where(df["poutcome"] == "nonexistent", 0, df["previous"])
     return df
 
 def save_to_sqlite(df, db_path='clients.db'):
