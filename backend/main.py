@@ -1,14 +1,16 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-import sqlite3
+import psycopg2
 import joblib
 import pandas as pd
 import os
 import sys
 import shap
 
-from macro_scraper import EurostatScraper
-from data_pipeline import WinsorizerTransformer
+from backend.macro_scraper import EurostatScraper
+from backend.data_pipeline import WinsorizerTransformer
+
+DB_URL = "postgresql://bank_admin:supersecret@db:5432/crm_database"
 
 sys.path.append(os.path.abspath('../'))
 
@@ -17,7 +19,8 @@ app = FastAPI(
 )
 scraper = EurostatScraper()
 
-MODEL_PATH = "../models/RF_model_v1.joblib"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, "..", "models", "RF_model_v1.joblib")
 
 model_pipeline = None
 preprocessor = None
@@ -60,12 +63,12 @@ class FeedbackRequest(BaseModel):
 @app.get("/clients")
 def get_clients_list():
     try:
-        conn = sqlite3.connect("clients.db")
+        conn = psycopg2.connect(DB_URL)
         df = pd.read_sql_query("SELECT * FROM clients WHERE contact_status = 'to_call'", conn)
         conn.close()
         return {"clients": df.to_dict(orient="records")}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+        raise HTTPException(status_code=500, detail=f"Error on PostgreSQL: {e}")
 
 @app.post("/predict")
 def predict_conversion(request: PredictRequest):
@@ -97,7 +100,6 @@ def predict_conversion(request: PredictRequest):
         negative_impact = []
         hidden_macro = ['euribor3m', 'cons.price.idx', 'cons.conf.idx']
 
-        # Pobieramy dane wejściowe jako słownik do łatwego wyciągania wartości
         raw_input_data = request.dict()
 
         for feat_name, shap_val in raw_shap_dict.items():
@@ -145,28 +147,27 @@ def predict_conversion(request: PredictRequest):
 @app.post("/feedback")
 def update_client_status(feedback: FeedbackRequest):
 
-    valid_results = ["Success", "Failure"]
-    if feedback.result not in valid_results:
-        raise HTTPException(status_code=400, detail=f"Result error: {feedback.result}")
+    if feedback.result not in ["Success", "Failure"]:
+        raise HTTPException(status_code=400, detail="Nieprawidłowy status. Dopuszczalne: 'Success' lub 'Failure'.")
 
     try:
-        conn = sqlite3.connect("clients.db")
+        conn = psycopg2.connect(DB_URL)
         cursor = conn.cursor()
 
         cursor.execute(
-            "UPDATE clients SET contact_status = ? WHERE client_id = ?",
+            "UPDATE clients SET contact_status = %s WHERE client_id = %s",
             (feedback.result, feedback.client_id)
         )
         conn.commit()
-
-        if cursor.rowcount == 0:
-            conn.close()
-            raise HTTPException(status_code=404, detail=f"Database error: {feedback.result}")
+        updated_rows = cursor.rowcount
         conn.close()
+
+        if updated_rows == 0:
+            raise HTTPException(status_code=404, detail="Brak klienta o podanym ID w bazie.")
 
         return {"success": True, "message": f"Zapisano status '{feedback.result}' dla klienta {feedback.client_id}."}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {e}")
+        raise HTTPException(status_code=500, detail=f"Błąd zapisu feedbacku w PostgreSQL: {e}")
 
 
 

@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: supersecret
       POSTGRES_DB: crm_database
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
 
@@ -28,7 +28,7 @@ services:
       context: ./frontend
     container_name: bank_frontend
     ports:
-      - "8501:8501"
+      - "8599:8501"
     environment:
       - API_URL=http://backend:8000
     depends_on:

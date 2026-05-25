@@ -35,7 +35,7 @@ def generate_mock_clients(n_clients=100):
     return df
 
 def save_to_postgres(df):
-    db_url = "postgresql://bank_admin:supersecret@localhost:5432/crm_database"
+    db_url = "postgresql://bank_admin:supersecret@localhost:5433/crm_database"
     try:
         engine = create_engine(db_url)
         df.to_sql('clients', engine, if_exists='replace', index=False)
