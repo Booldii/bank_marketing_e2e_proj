@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 
 API_URL = "http://localhost:8000"
 
-st.set_page_config(page_title="CRM - Bank ML", page_icon="📞", layout="wide")
+st.set_page_config(page_title="CRM - Bank ML", layout="wide")
 
 st.sidebar.header("Ustawienia Systemu")
 st.sidebar.markdown("Wybierz datę, dla której chcesz przeprowadzić symulację połączeń.")

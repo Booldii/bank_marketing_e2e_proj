@@ -95,18 +95,40 @@ def predict_conversion(request: PredictRequest):
 
         positive_impact = []
         negative_impact = []
+        hidden_macro = ['euribor3m', 'cons.price.idx', 'cons.conf.idx']
+
+        # Pobieramy dane wejściowe jako słownik do łatwego wyciągania wartości
+        raw_input_data = request.dict()
 
         for feat_name, shap_val in raw_shap_dict.items():
             clean_name = feat_name.split('__')[-1]
+
+            if clean_name in hidden_macro:
+                continue
+
+            display_value = ""
+            base_feature = clean_name.split('_')[0] if '_' in clean_name else clean_name
+
+            if clean_name in raw_input_data:  # Dla numerycznych
+                display_value = str(raw_input_data[clean_name])
+            else:  # Dla kategorycznych OHE (szukamy w nazwie)
+                display_value = clean_name.split('_')[-1] if '_' in clean_name else "Tak"
+
             rounded_val = round(float(shap_val), 4)
 
-            if rounded_val > 0.0001:
-                positive_impact.append({"feature": clean_name, "impact": rounded_val})
-            elif rounded_val < -0.0001:
-                negative_impact.append({"feature": clean_name, "impact": rounded_val})
+            item = {
+                "feature": clean_name.replace('_', ' ').title(),
+                "value": display_value,
+                "impact": rounded_val
+            }
 
-        positive_impact = sorted(positive_impact, key=lambda x: x['impact'], reverse=True)[:3]
-        negative_impact = sorted(negative_impact, key=lambda x: x['impact'])[:3]
+            if rounded_val > 0.001:
+                positive_impact.append(item)
+            elif rounded_val < -0.001:
+                negative_impact.append(item)
+
+        positive_impact = sorted(positive_impact, key=lambda x: x['impact'], reverse=True)[:5]
+        negative_impact = sorted(negative_impact, key=lambda x: x['impact'])[:5]
 
         return {
             "success": True,
