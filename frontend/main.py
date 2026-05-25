@@ -3,9 +3,10 @@ import requests
 import pandas as pd
 from datetime import date
 import plotly.graph_objects as go
+import os
 
 
-API_URL = "http://localhost:8000"
+API_URL = os.getenv("API_URL", "http://localhost:8000")
 
 st.set_page_config(page_title="CRM - Bank ML", layout="wide")
 

@@ -8,5 +8,3 @@ __pycache__/
 .idea/
 
 data/
-*.db
-*.sqlite3
