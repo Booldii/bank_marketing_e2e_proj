@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-import sqlite3
+from sqlalchemy import create_engine
 
 def generate_mock_clients(n_clients=100):
     np.random.seed(42)
@@ -34,12 +34,15 @@ def generate_mock_clients(n_clients=100):
     df["previous"] = np.where(df["poutcome"] == "nonexistent", 0, df["previous"])
     return df
 
-def save_to_sqlite(df, db_path='clients.db'):
-    conn = sqlite3.connect(db_path)
-    df.to_sql('clients', conn, if_exists='replace', index=False)
-    conn.close()
+def save_to_postgres(df):
+    db_url = "postgresql://bank_admin:supersecret@localhost:5432/crm_database"
+    try:
+        engine = create_engine(db_url)
+        df.to_sql('clients', engine, if_exists='replace', index=False)
+        print("Saved client date in PostgreSQL.")
+    except Exception as e:
+        print(f"Save error: {e}")
 
 if __name__ == "__main__":
-    db_filename = 'clients.db'
     clients_df = generate_mock_clients(100)
-    save_to_sqlite(clients_df, db_filename)
+    save_to_postgres(clients_df)
