@@ -26,9 +26,24 @@ sim_month = sim_date.strftime("%b").lower()
 days_map = {0: 'mon', 1: 'tue', 2: 'wed', 3: 'thu', 4: 'fri', 5: 'sat', 6: 'sun'}
 sim_day = days_map[sim_date.weekday()]
 
-st.sidebar.info(f"Parametry przekazywane do modelu:\n* **Rok:** {sim_year}\n* **Miesiąc:** {sim_month.capitalize()}")
+st.sidebar.markdown("---")
+st.sidebar.subheader("Obecna Sytuacja Rynkowa")
 
-st.title("Panel Telemarketera (ML Scoring)")
+try:
+    macro_res = requests.get(f"{API_URL}/macro", params={"year": sim_year, "month": sim_month}, timeout=3)
+    if macro_res.status_code == 200:
+        macro_data = macro_res.json()["macro"]
+
+        # Wyświetlamy estetyczne kafelki metryk w panelu bocznym
+        st.sidebar.metric(label="Euribor 3M", value=f"{macro_data['euribor3m']}%")
+        st.sidebar.metric(label="Wskaźnik cen konsumpcyjnych (CPI)", value=f"{macro_data['cons.price.idx']} pkt")
+        st.sidebar.metric(label="Wskaźnik ufności konsumenckiej (CCI)", value=f"{macro_data['cons.conf.idx']} pkt")
+    else:
+        st.sidebar.error("Brak danych makro z Eurostatu.")
+except requests.exceptions.RequestException:
+    st.sidebar.warning("Brak połączenia z API dla danych makro.")
+
+st.title("Panel Telemarketera")
 
 try:
     response = requests.get(f"{API_URL}/clients")
@@ -59,7 +74,6 @@ else:
 
     st.markdown("---")
 
-    # GŁÓWNY PANEL KONSULTANTA (Zawsze widoczny)
     c_info, c_action = st.columns([2, 1])
 
     with c_info:
@@ -71,13 +85,13 @@ else:
 
     with c_action:
         st.subheader("Wynik Rozmowy")
-        if st.button("✅ Sukces (Lokata)", use_container_width=True):
+        if st.button("✅ Sukces (Lokata)", width='stretch'):
             requests.post(f"{API_URL}/feedback", json={"client_id": selected_id, "result": "Success"})
             st.success("Zapisano! Odświeżam...")
             time.sleep(0.5)
             st.rerun()
 
-        if st.button("❌ Odmowa", use_container_width=True):
+        if st.button("❌ Odmowa", width='stretch'):
             requests.post(f"{API_URL}/feedback", json={"client_id": selected_id, "result": "Failure"})
             st.warning("Odmowa. Odświeżam...")
             time.sleep(0.5)
@@ -85,7 +99,6 @@ else:
 
     st.markdown("---")
 
-    # OPCJONALNY PANEL ANALIZY ML (Kliknięcie go tylko wyświetla wynik)
     if st.button("🔍 Uruchom Asystenta ML (Scoring & SHAP)"):
         with st.spinner("Odpytywanie Eurostatu i kalkulacja modelu..."):
 
@@ -95,6 +108,8 @@ else:
             payload["year"] = sim_year
             payload["month"] = sim_month
             payload["day_of_week"] = sim_day
+
+            payload["macro_data"] = macro_data
 
             pred_response = requests.post(f"{API_URL}/predict", json=payload)
 
@@ -108,7 +123,6 @@ else:
 
                 with ml_col1:
                     st.metric("Szansa na Sukces", f"{prob:.1%}")
-                    st.info(f"**Makro:** Euribor {macro['euribor3m']}% | Inflacja {macro['cons.price.idx']}")
 
                 with ml_col2:
                     all_impacts = shap_exp["positive"] + shap_exp["negative"]
@@ -122,6 +136,6 @@ else:
                             marker_color=colors, text=[f"{v:+.3f}" for v in values], textposition='auto'
                         ))
                         fig.update_layout(height=250, margin=dict(l=0, r=0, t=0, b=0), yaxis=dict(autorange="reversed"))
-                        st.plotly_chart(fig, use_container_width=True)
+                        st.plotly_chart(fig, width='stretch')
             else:
                 st.error("Błąd usługi ML.")

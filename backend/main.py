@@ -56,6 +56,8 @@ class PredictRequest(BaseModel):
     day_of_week: str
     year: int
 
+    macro_data: dict
+
 class FeedbackRequest(BaseModel):
     client_id: int
     result: str
@@ -75,8 +77,8 @@ def predict_conversion(request: PredictRequest):
     if model_pipeline is None:
         raise HTTPException(status_code=500, detail="Not installed model.")
 
-    macro_data = scraper.get_all_macro(request.year, request.month)
-    client_dict = request.dict(exclude={'year'})
+    macro_data = request.macro_data
+    client_dict = request.dict(exclude={'year', 'macro_data'})
     combined_features = {**client_dict, **macro_data}
     X_new = pd.DataFrame([combined_features])
 
@@ -168,6 +170,14 @@ def update_client_status(feedback: FeedbackRequest):
         return {"success": True, "message": f"Zapisano status '{feedback.result}' dla klienta {feedback.client_id}."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Błąd zapisu feedbacku w PostgreSQL: {e}")
+
+@app.get("/macro")
+def get_macro_indicators(year: int, month: str):
+    try:
+        macro_data = scraper.get_all_macro(year, month)
+        return {"success": True, "macro": macro_data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Błąd pobierania danych Eurostat: {e}")
 
 
 
