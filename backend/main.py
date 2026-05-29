@@ -20,7 +20,7 @@ app = FastAPI(
 scraper = EurostatScraper()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, "..", "models", "RF_model_v1.joblib")
+MODEL_PATH = os.path.join(BASE_DIR, "..", "models", "RF_model_v2.joblib")
 
 model_pipeline = None
 preprocessor = None
